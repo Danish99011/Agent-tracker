@@ -44,7 +44,11 @@
       "used_tokens": 250000
      },
      "usage": {
-      "cost_usd": 12.5
+      "cost_usd": 12.5,
+      "input_tokens": 1000,
+      "output_tokens": 50000,
+      "cache_read_tokens": 2000000,
+      "cache_write_tokens": 100000
      },
      "artifacts": [
       {
@@ -55,8 +59,17 @@
        "title": "bad",
        "url": "javascript:alert(1)"
       }
-     ]
-    }
+     ],
+     "rate_limit_info": {
+      "isUsingOverage": false,
+      "rateLimitType": "five_hour",
+      "resetsAt": 1788612600,
+      "status": "allowed"
+     },
+     "container_cc_version": "2.1.261"
+    },
+    "configured_model": "claude-sonnet-5",
+    "permission_mode": "PERMISSION_MODE_AUTO"
    },
    {
     "id": "session_01BBBBBBBBBBBBBBBBBBBBBBBB",
@@ -94,7 +107,8 @@
       "": "claude/alerts"
      },
      "usage": {
-      "cost_usd": 3
+      "cost_usd": 3,
+      "output_tokens": 20000
      }
     }
    },
@@ -115,6 +129,15 @@
        }
       }
      ]
+    },
+    "external_metadata": {
+     "worktree_state": {
+      "example/shop-mobile": {
+       "branch": "main",
+       "is_dirty": true,
+       "unpushed_count": 2
+      }
+     }
     }
    },
    {
@@ -157,7 +180,9 @@
       "": "claude/video"
      },
      "usage": {
-      "cost_usd": 40
+      "cost_usd": 40,
+      "output_tokens": 300000,
+      "cache_read_tokens": 5000000
      }
     }
    }

@@ -20,6 +20,15 @@ and the web at once. Sessions are the agents; Routines are the scheduled agents.
   - archived sessions folded away under a disclosure.
 - **Routines without a repository**, when a Routine pins no source repo and its
   prompt does not name a known product.
+- **Usage**: total spend, tokens out, tokens in and cached, and models in use,
+  then spend broken down by model (with the sessions each model serves) and by
+  product. Each product heading also carries its own spend.
+- **All details** under every session: session id, start and last activity,
+  API state, model served and configured, effort, permission mode, where it runs,
+  the device it was started from, repositories, tags, the session it continues,
+  input, output and cache tokens, cost, context used, the account's usage window,
+  Claude Code version, working-tree state for Remote Control sessions, artifacts.
+- The header shows when the account's current usage window resets.
 
 A session whose turn has ended but whose own summary says an agent is still
 executing is shown as **Agents running**, not Review ready, and stays out of
