@@ -77,9 +77,25 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn('href="https://claude.ai/code/not a session id"', self.page)
         self.assertIn('href="https://claude.ai/code/session_01AAAAAAAAAAAAAAAAAAAAAAAA"', self.page)
 
+    def test_background_agents_are_not_review_ready(self):
+        # The status field says review_ready, but the session's own summary says an agent is
+        # still executing: show it as live work and keep it out of "Needs you".
+        row = self.page[self.page.index("Video pipeline") - 400:self.page.index("Video pipeline") + 600]
+        self.assertIn("Agents running", row)
+        self.assertNotIn("Review ready", row)
+        self.assertIn("turn ended, agents reported still running", row)
+        needs = self.page[self.page.index("Needs you"):self.page.index('<section class="product">')]
+        self.assertNotIn("Video pipeline", needs)
+        self.assertIn("Price alerts", needs)      # explicit needs_action still counts
+
+    def test_running_turn_beats_stale_bucket(self):
+        s = tracker.norm_session({"id": "session_01Z", "session_status": "SESSION_STATUS_RUNNING",
+                                  "status_bucket": "SESSION_STATUS_BUCKET_COMPLETED", "task_summary": "Running tests"})
+        self.assertEqual((s["state"], s["doing"]), ("WORKING", "Running tests"))
+
     def test_counts_line(self):
-        self.assertIn("<b>1</b>working", self.page)
-        self.assertIn("<b>2</b>need you", self.page)   # review-ready + failed, archived excluded
+        self.assertIn("<b>2</b>working", self.page)    # one running turn + one with agents still going
+        self.assertIn("<b>2</b>need you", self.page)   # review-ready with needs_action + failed; archived excluded
 
 
 if __name__ == "__main__":

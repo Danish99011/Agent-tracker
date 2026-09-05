@@ -12,14 +12,23 @@ and the web at once. Sessions are the agents; Routines are the scheduled agents.
 - **Needs you**: sessions that are review-ready or failed, sessions whose last
   summary names an action for you, and Routines whose last run failed.
 - **One section per product** (GitHub repository), most recently active first:
-  - every open session with its state (Working, Review ready, Done, Failed),
-    current task or last summary, branch, model, device it was started from,
+  - every open session with its state (Working, Agents running, Review ready,
+    Done, Failed), current task or last summary, branch, model, device it was started from,
     context used, cost so far, published artifacts, and the session it continues;
   - the product's Routines with a plain-language schedule, next run, and last
     run result;
   - archived sessions folded away under a disclosure.
 - **Routines without a repository**, when a Routine pins no source repo and its
   prompt does not name a known product.
+
+A session whose turn has ended but whose own summary says an agent is still
+executing is shown as **Agents running**, not Review ready, and stays out of
+"Needs you". The Remote API only exposes the turn state, so this reading comes
+from the session's summary text and is labelled as such.
+
+On a phone or tablet, session titles open in the Claude app through its
+`claude://code/{session-id}` link; a small "web" chip beside each title keeps
+the claude.ai link. On a computer the titles link to claude.ai directly.
 
 Times show as "3 hours ago" in the viewer's timezone and as absolute UTC on hover.
 A "snapshot is over 6 hours old" badge appears when the page has gone stale.

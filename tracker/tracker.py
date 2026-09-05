@@ -110,9 +110,14 @@ def load_records(args):
 
 ORIGIN = {"android": "Android", "ios": "iOS", "web": "Web", "desktop": "Desktop",
           "claude_code_cli": "CLI", "claude_code_mcp_seed": "Spawned by a session"}
-STATE = {"WORKING": ("Working", "ok"), "REVIEW_READY": ("Review ready", "warn"),
-         "FAILED": ("Failed", "bad"), "COMPLETED": ("Done", "idle"),
-         "ARCHIVED": ("Archived", "idle"), "IDLE": ("Idle", "idle"), "RUNNING": ("Running", "ok")}
+STATE = {"WORKING": ("Working", "ok"), "AGENTS_RUNNING": ("Agents running", "ok"),
+         "REVIEW_READY": ("Review ready", "warn"), "FAILED": ("Failed", "bad"),
+         "COMPLETED": ("Done", "idle"), "ARCHIVED": ("Archived", "idle"), "IDLE": ("Idle", "idle")}
+LIVE = ("WORKING", "AGENTS_RUNNING")
+# The session's own last summary is the only place background agents show up; the status
+# field is set before they finish. "assembly agent executing EDL" means work is still going.
+AGENTS_BUSY = re.compile(r"\b(?:agents?|sub-?agents?|tasks?|workers?|jobs?)\b[^.;]{0,60}?\b(?:executing|running|working|in progress|still going|underway)"
+                         r"|\b(?:executing|running|working)\b[^.;]{0,30}?\bin (?:the )?background", re.I)
 DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -147,8 +152,15 @@ def norm_session(s):
                     for o in ctx.get("outcomes") or [] if o.get("git_repository")), None)
     product = outcome or (repos[0] if repos else "")
     archived = s.get("session_status") == "SESSION_STATUS_ARCHIVED"
-    state = "ARCHIVED" if archived else (enum_tail(s.get("status_bucket"), "SESSION_STATUS_BUCKET_")
-                                         or enum_tail(s.get("session_status"), "SESSION_STATUS_"))
+    running = s.get("session_status") == "SESSION_STATUS_RUNNING"
+    detail = (pts.get("status_detail") or "").strip()
+    state = enum_tail(s.get("status_bucket"), "SESSION_STATUS_BUCKET_") or enum_tail(s.get("session_status"), "SESSION_STATUS_")
+    if archived:
+        state = "ARCHIVED"
+    elif running:
+        state = "WORKING"
+    elif state in ("REVIEW_READY", "COMPLETED", "IDLE") and AGENTS_BUSY.search(detail):
+        state = "AGENTS_RUNNING"
     needs = (pts.get("needs_action") or "").strip()
     live = (s.get("task_summary") or ext.get("task_summary") or "").strip()
     usage, cu = ext.get("usage") or {}, ext.get("context_usage") or {}
@@ -156,7 +168,7 @@ def norm_session(s):
         "id": str(s.get("id") or ""), "title": s.get("title") or s.get("id") or "Untitled session",
         "product": product, "also": [r for r in repos if r.lower() != product.lower()],
         "state": state, "needs_you": not archived and (bool(needs) or state in ("REVIEW_READY", "FAILED")),
-        "doing": live if state == "WORKING" and live else (pts.get("status_detail") or "").strip(),
+        "doing": live if state == "WORKING" and live else detail,
         "recent": (pts.get("recent_action") or "").strip(), "needs": needs,
         "branch": ", ".join(v for v in (ext.get("current_branches") or {}).values() if v),
         "model": ext.get("last_served_model") or ctx.get("model") or "",
@@ -268,7 +280,8 @@ def chip(text, cls=""):
 def session_row(s, titles, show_product=False):
     label, kind = STATE.get(s["state"], (s["state"].replace("_", " ").capitalize() or "Unknown", "idle"))
     href = session_href(s["id"])
-    title = f'<a class="title" href="{esc(href)}">{esc(s["title"])}</a>' if href else f'<span class="title">{esc(s["title"])}</span>'
+    title = (f'<a class="title" href="{esc(href)}" data-session="{esc(s["id"])}">{esc(s["title"])}</a>' if href
+             else f'<span class="title">{esc(s["title"])}</span>')
     chips = "".join([
         chip(s["product"].split("/")[-1]) if show_product and s["product"] else "",
         chip("New", "new") if s["unread"] else "",
@@ -294,12 +307,14 @@ def session_row(s, titles, show_product=False):
         meta.append(f"<span>{s['ctx_pct']}% context</span>")
     if isinstance(s["cost"], (int, float)):
         meta.append(f"<span>${s['cost']:,.2f}</span>")
+    if s["state"] == "AGENTS_RUNNING":
+        meta.append("<span>turn ended, agents reported still running</span>")
     if s["parent"] and s["parent"] in titles:
         meta.append(f"<span>continues “{esc(titles[s['parent']])}”</span>")
     meta.append(when(s["updated"], "updated "))
     for a in s["artifacts"]:
         meta.append(f'<span><a href="{esc(a["url"])}">{esc(a.get("title") or "artifact")}</a></span>')
-    return (f'<li class="row">{pill(label, kind, live=s["state"] == "WORKING")}'
+    return (f'<li class="row">{pill(label, kind, live=s["state"] in LIVE)}'
             f'<div><p class="head">{title}{chips}</p>{"".join(lines)}'
             f'<p class="meta">{"".join(meta)}</p></div></li>')
 
@@ -345,10 +360,10 @@ def render(raw_sessions, raw_triggers, now):
         if t["product"]:
             products.setdefault(t["product"].lower(), [t["product"], []])
     epoch = datetime.fromtimestamp(0, timezone.utc)
-    order = {"WORKING": 0}
+    order = {"WORKING": 0, "AGENTS_RUNNING": 0}
     needs = sorted((s for s in ss if s["needs_you"]), key=lambda s: s["updated"] or epoch, reverse=True)
     failed_routines = [t for t in ts if t["last_status"] == "FAILED" or t["suspended"]]
-    working = sum(s["state"] == "WORKING" for s in ss)
+    working = sum(s["state"] in LIVE for s in ss)
     active_products = [k for k, v in products.items() if k]
 
     parts = []
@@ -367,7 +382,7 @@ def render(raw_sessions, raw_triggers, now):
         open_rows = [session_row(s, titles) for s in sessions if s["state"] != "ARCHIVED"]
         archived = [session_row(s, titles) for s in sessions if s["state"] == "ARCHIVED"]
         routines = [trigger_row(t, show_product=False) for t in ts if t["product"].lower() == key and key]
-        live = sum(s["state"] == "WORKING" for s in sessions)
+        live = sum(s["state"] in LIVE for s in sessions)
         counts = " · ".join(x for x in [
             f"{live} working" if live else "", f"{len(open_rows)} open" if open_rows else "",
             f"{len(routines)} routine{'s' if len(routines) != 1 else ''}" if routines else "",
@@ -468,6 +483,15 @@ JS = """
     if(Math.abs(diff)>=u[1]||i===units.length-1)return rtf.format(Math.round(diff/u[1]),u[0]);}}
   document.querySelectorAll('time[datetime]').forEach(function(t){var d=new Date(t.getAttribute('datetime'));
     if(isNaN(d))return;t.title=t.textContent;t.textContent=rel(d);});
+  // Phones and tablets: open sessions in the Claude app (claude://code/{id}); keep the web link as a chip.
+  var ua=navigator.userAgent, touchMac=navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
+  if(/Android|iPhone|iPad|iPod/i.test(ua)||touchMac){
+    document.querySelectorAll('a.title[data-session]').forEach(function(a){
+      var id=a.getAttribute('data-session'); if(!/^session_[A-Za-z0-9]+$/.test(id))return;
+      var web=document.createElement('a'); web.className='chip'; web.href=a.href; web.textContent='web';
+      a.href='claude://code/'+id; a.after(web);
+    });
+  }
   var snap=document.getElementById('snap');
   if(snap&&Date.now()-new Date(snap.getAttribute('datetime'))>6*36e5)document.getElementById('stale').hidden=false;
 })();
@@ -488,7 +512,7 @@ PAGE = """<title>Agent Tracker</title>
 {products}
 {routines}
 </main>
-<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. Sessions link to claude.ai; costs are this account’s own usage figures.</footer>
+<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. On a phone or tablet, session titles open in the Claude app and the small “web” chip opens claude.ai. Costs are this account’s own usage figures.</footer>
 </div>
 <script>{js}</script>
 """

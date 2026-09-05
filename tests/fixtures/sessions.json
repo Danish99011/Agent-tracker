@@ -1,18 +1,166 @@
-{"ccr":{"data":[
- {"id":"session_01AAAAAAAAAAAAAAAAAAAAAAAA","title":"Checkout flow rewrite","session_status":"SESSION_STATUS_RUNNING","status_bucket":"SESSION_STATUS_BUCKET_WORKING",
-  "created_at":"2026-09-05T08:00:00Z","updated_at":"2026-09-05T09:30:00.123456789Z","origin":"ios","environment_kind":"anthropic_cloud","unread":true,
-  "session_context":{"sources":[{"git_repository":{"url":"https://github.com/example/shop-web"}}],"outcomes":[{"git_repository":{"git_info":{"repo":"example/shop-web","branches":["claude/checkout-x1"]}}}],"model":"claude-opus-5"},
-  "task_summary":"Running the payment integration tests",
-  "external_metadata":{"current_branches":{"":"claude/checkout-x1"},"last_served_model":"claude-opus-5","context_usage":{"max_tokens":1000000,"used_tokens":250000},"usage":{"cost_usd":12.5},
-     "artifacts":[{"title":"Checkout preview","url":"https://claude.ai/code/artifact/abc"},{"title":"bad","url":"javascript:alert(1)"}]}},
- {"id":"session_01BBBBBBBBBBBBBBBBBBBBBBBB","title":"Price alerts <script>alert(1)</script>","session_status":"SESSION_STATUS_IDLE","status_bucket":"SESSION_STATUS_BUCKET_REVIEW_READY",
-  "created_at":"2026-09-04T08:00:00Z","updated_at":"2026-09-04T18:00:00Z","origin":"android","environment_kind":"anthropic_cloud","parent_session_id":"session_01AAAAAAAAAAAAAAAAAAAAAAAA",
-  "session_context":{"sources":[{"git_repository":{"url":"git@github.com:example/shop-web.git"}},{"git_repository":{"url":"https://github.com/example/shop-mobile"}}],"model":"claude-sonnet-5"},
-  "post_turn_summary":{"status_category":"review_ready","status_detail":"PR #42 opened, waiting for review","needs_action":"Approve the schema migration","recent_action":"Opened PR #42"},
-  "external_metadata":{"current_branches":{"":"claude/alerts"},"usage":{"cost_usd":3}}},
- {"id":"session_01CCCCCCCCCCCCCCCCCCCCCCCC","title":"Old spike","session_status":"SESSION_STATUS_ARCHIVED","status_bucket":"SESSION_STATUS_BUCKET_COMPLETED",
-  "created_at":"2026-08-01T08:00:00Z","updated_at":"2026-08-01T09:00:00Z","origin":"claude_code_cli","environment_kind":"bridge",
-  "session_context":{"sources":[{"git_repository":{"url":"https://github.com/example/shop-mobile"}}]}},
- {"id":"not a session id","title":"No repo at all","session_status":"SESSION_STATUS_IDLE","status_bucket":"SESSION_STATUS_BUCKET_FAILED",
-  "created_at":"2026-09-03T08:00:00Z","updated_at":"2026-09-03T09:00:00Z","post_turn_summary":{"status_detail":"Container failed to start"}}
-]}}
+{
+ "ccr": {
+  "data": [
+   {
+    "id": "session_01AAAAAAAAAAAAAAAAAAAAAAAA",
+    "title": "Checkout flow rewrite",
+    "session_status": "SESSION_STATUS_RUNNING",
+    "status_bucket": "SESSION_STATUS_BUCKET_WORKING",
+    "created_at": "2026-09-05T08:00:00Z",
+    "updated_at": "2026-09-05T09:30:00.123456789Z",
+    "origin": "ios",
+    "environment_kind": "anthropic_cloud",
+    "unread": true,
+    "session_context": {
+     "sources": [
+      {
+       "git_repository": {
+        "url": "https://github.com/example/shop-web"
+       }
+      }
+     ],
+     "outcomes": [
+      {
+       "git_repository": {
+        "git_info": {
+         "repo": "example/shop-web",
+         "branches": [
+          "claude/checkout-x1"
+         ]
+        }
+       }
+      }
+     ],
+     "model": "claude-opus-5"
+    },
+    "task_summary": "Running the payment integration tests",
+    "external_metadata": {
+     "current_branches": {
+      "": "claude/checkout-x1"
+     },
+     "last_served_model": "claude-opus-5",
+     "context_usage": {
+      "max_tokens": 1000000,
+      "used_tokens": 250000
+     },
+     "usage": {
+      "cost_usd": 12.5
+     },
+     "artifacts": [
+      {
+       "title": "Checkout preview",
+       "url": "https://claude.ai/code/artifact/abc"
+      },
+      {
+       "title": "bad",
+       "url": "javascript:alert(1)"
+      }
+     ]
+    }
+   },
+   {
+    "id": "session_01BBBBBBBBBBBBBBBBBBBBBBBB",
+    "title": "Price alerts <script>alert(1)</script>",
+    "session_status": "SESSION_STATUS_IDLE",
+    "status_bucket": "SESSION_STATUS_BUCKET_REVIEW_READY",
+    "created_at": "2026-09-04T08:00:00Z",
+    "updated_at": "2026-09-04T18:00:00Z",
+    "origin": "android",
+    "environment_kind": "anthropic_cloud",
+    "parent_session_id": "session_01AAAAAAAAAAAAAAAAAAAAAAAA",
+    "session_context": {
+     "sources": [
+      {
+       "git_repository": {
+        "url": "git@github.com:example/shop-web.git"
+       }
+      },
+      {
+       "git_repository": {
+        "url": "https://github.com/example/shop-mobile"
+       }
+      }
+     ],
+     "model": "claude-sonnet-5"
+    },
+    "post_turn_summary": {
+     "status_category": "review_ready",
+     "status_detail": "PR #42 opened, waiting for review",
+     "needs_action": "Approve the schema migration",
+     "recent_action": "Opened PR #42"
+    },
+    "external_metadata": {
+     "current_branches": {
+      "": "claude/alerts"
+     },
+     "usage": {
+      "cost_usd": 3
+     }
+    }
+   },
+   {
+    "id": "session_01CCCCCCCCCCCCCCCCCCCCCCCC",
+    "title": "Old spike",
+    "session_status": "SESSION_STATUS_ARCHIVED",
+    "status_bucket": "SESSION_STATUS_BUCKET_COMPLETED",
+    "created_at": "2026-08-01T08:00:00Z",
+    "updated_at": "2026-08-01T09:00:00Z",
+    "origin": "claude_code_cli",
+    "environment_kind": "bridge",
+    "session_context": {
+     "sources": [
+      {
+       "git_repository": {
+        "url": "https://github.com/example/shop-mobile"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "id": "not a session id",
+    "title": "No repo at all",
+    "session_status": "SESSION_STATUS_IDLE",
+    "status_bucket": "SESSION_STATUS_BUCKET_FAILED",
+    "created_at": "2026-09-03T08:00:00Z",
+    "updated_at": "2026-09-03T09:00:00Z",
+    "post_turn_summary": {
+     "status_detail": "Container failed to start"
+    }
+   },
+   {
+    "id": "session_01EEEEEEEEEEEEEEEEEEEEEEEE",
+    "title": "Video pipeline",
+    "session_status": "SESSION_STATUS_IDLE",
+    "status_bucket": "SESSION_STATUS_BUCKET_REVIEW_READY",
+    "created_at": "2026-09-05T07:00:00Z",
+    "updated_at": "2026-09-05T09:50:00Z",
+    "origin": "ios",
+    "environment_kind": "anthropic_cloud",
+    "session_context": {
+     "sources": [
+      {
+       "git_repository": {
+        "url": "https://github.com/example/shop-mobile"
+       }
+      }
+     ],
+     "model": "claude-opus-5"
+    },
+    "post_turn_summary": {
+     "status_category": "review_ready",
+     "status_detail": "narration & music done (682.5s); assembly agent executing EDL",
+     "needs_action": ""
+    },
+    "external_metadata": {
+     "current_branches": {
+      "": "claude/video"
+     },
+     "usage": {
+      "cost_usd": 40
+     }
+    }
+   }
+  ]
+ }
+}
