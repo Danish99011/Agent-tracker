@@ -88,6 +88,16 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("Video pipeline", needs)
         self.assertIn("Price alerts", needs)      # explicit needs_action still counts
 
+    def test_multi_repo_session_follows_title_or_tag(self):
+        base = {"id": "session_01Y", "session_status": "SESSION_STATUS_IDLE",
+                "session_context": {"sources": [{"git_repository": {"url": "https://github.com/o/E-Ledger"}},
+                                                {"git_repository": {"url": "https://github.com/o/content-creator"}}],
+                                    "outcomes": [{"git_repository": {"git_info": {"repo": "o/E-Ledger"}}}]}}
+        self.assertEqual(tracker.norm_session(dict(base, title="Content creator"))["product"], "o/content-creator")
+        self.assertEqual(tracker.norm_session(dict(base, title="Fix invoices", tags=["content-creator"]))["product"], "o/content-creator")
+        self.assertEqual(tracker.norm_session(dict(base, title="Fix invoices"))["product"], "o/E-Ledger")
+        self.assertEqual(tracker.norm_session(dict(base, title="Fix invoices"))["also"], ["o/content-creator"])
+
     def test_running_turn_beats_stale_bucket(self):
         s = tracker.norm_session({"id": "session_01Z", "session_status": "SESSION_STATUS_RUNNING",
                                   "status_bucket": "SESSION_STATUS_BUCKET_COMPLETED", "task_summary": "Running tests"})

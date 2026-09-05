@@ -26,9 +26,13 @@ executing is shown as **Agents running**, not Review ready, and stays out of
 "Needs you". The Remote API only exposes the turn state, so this reading comes
 from the session's summary text and is labelled as such.
 
-On a phone or tablet, session titles open in the Claude app through its
-`claude://code/{session-id}` link; a small "web" chip beside each title keeps
-the claude.ai link. On a computer the titles link to claude.ai directly.
+A session with several repositories attached is filed under the one its tag or
+title names (a session called "Content creator" with E-Ledger attached first
+belongs to content-creator); otherwise under its output repository, then the
+first one attached. The other repositories show as "also" chips.
+
+Session titles link to claude.ai. On a phone or tablet a small "app" chip
+beside each title carries the Claude app's `claude://code/{session-id}` link.
 
 Times show as "3 hours ago" in the viewer's timezone and as absolute UTC on hover.
 A "snapshot is over 6 hours old" badge appears when the page has gone stale.

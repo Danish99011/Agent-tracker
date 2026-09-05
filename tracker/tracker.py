@@ -142,6 +142,26 @@ def parse_iso(iso):
     return d.astimezone(timezone.utc) if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
+def _slug(text):
+    return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+def pick_product(repos, outcome, tags, title):
+    """Which repo a session belongs to. With several repos attached, a tag or the session
+    title naming one of them beats the API's first/output repo (a session called
+    "Content creator" with E-Ledger attached first is about content-creator)."""
+    if len(repos) > 1:
+        by_slug = {_slug(r.split("/")[-1]): r for r in repos}
+        for tag in tags:
+            if _slug(tag) in by_slug:
+                return by_slug[_slug(tag)]
+        t = _slug(title)
+        for slug, repo in by_slug.items():
+            if slug and (slug == t or (len(slug) >= 5 and slug in t)):
+                return repo
+    return outcome or (repos[0] if repos else "")
+
+
 def norm_session(s):
     ctx = s.get("session_context") or {}
     ext = s.get("external_metadata") or {}
@@ -150,7 +170,7 @@ def norm_session(s):
     repos = [r for r in repos if r]
     outcome = next((((o.get("git_repository") or {}).get("git_info") or {}).get("repo")
                     for o in ctx.get("outcomes") or [] if o.get("git_repository")), None)
-    product = outcome or (repos[0] if repos else "")
+    product = pick_product(repos, outcome, s.get("tags") or [], s.get("title") or "")
     archived = s.get("session_status") == "SESSION_STATUS_ARCHIVED"
     running = s.get("session_status") == "SESSION_STATUS_RUNNING"
     detail = (pts.get("status_detail") or "").strip()
@@ -483,13 +503,14 @@ JS = """
     if(Math.abs(diff)>=u[1]||i===units.length-1)return rtf.format(Math.round(diff/u[1]),u[0]);}}
   document.querySelectorAll('time[datetime]').forEach(function(t){var d=new Date(t.getAttribute('datetime'));
     if(isNaN(d))return;t.title=t.textContent;t.textContent=rel(d);});
-  // Phones and tablets: open sessions in the Claude app (claude://code/{id}); keep the web link as a chip.
+  // Phones and tablets: add an "app" chip with the Claude app link (claude://code/{id}).
+  // The title keeps the web URL, which every viewer can open.
   var ua=navigator.userAgent, touchMac=navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
   if(/Android|iPhone|iPad|iPod/i.test(ua)||touchMac){
     document.querySelectorAll('a.title[data-session]').forEach(function(a){
       var id=a.getAttribute('data-session'); if(!/^session_[A-Za-z0-9]+$/.test(id))return;
-      var web=document.createElement('a'); web.className='chip'; web.href=a.href; web.textContent='web';
-      a.href='claude://code/'+id; a.after(web);
+      var app=document.createElement('a'); app.className='chip'; app.href='claude://code/'+id; app.textContent='app';
+      a.after(app);
     });
   }
   var snap=document.getElementById('snap');
@@ -512,7 +533,7 @@ PAGE = """<title>Agent Tracker</title>
 {products}
 {routines}
 </main>
-<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. On a phone or tablet, session titles open in the Claude app and the small “web” chip opens claude.ai. Costs are this account’s own usage figures.</footer>
+<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. Session titles open on claude.ai; on a phone or tablet the small “app” chip tries the Claude app. Costs are this account’s own usage figures.</footer>
 </div>
 <script>{js}</script>
 """
