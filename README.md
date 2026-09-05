@@ -31,8 +31,14 @@ title names (a session called "Content creator" with E-Ledger attached first
 belongs to content-creator); otherwise under its output repository, then the
 first one attached. The other repositories show as "also" chips.
 
-Session titles link to claude.ai. On a phone or tablet a small "app" chip
-beside each title carries the Claude app's `claude://code/{session-id}` link.
+Session titles link to claude.ai. The artifact viewer in the Claude mobile app
+only lets ordinary web links out, so an app link on the page itself does nothing
+there. To land in the app instead of the browser, host `hop/open.html` on any
+https static host and put its URL in `tracker/HOP_URL`. On phones and tablets
+the titles then open that page, which hands off to the Claude app (an Android
+intent link or the iOS `claude://code/{session-id}` link) and offers the web
+session as a fallback. The session id travels in the URL fragment, so the host
+never sees it.
 
 Times show as "3 hours ago" in the viewer's timezone and as absolute UTC on hover.
 A "snapshot is over 6 hours old" badge appears when the page has gone stale.

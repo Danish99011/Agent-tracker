@@ -369,7 +369,7 @@ def rows(items, empty):
     return f'<ul class="rows">{"".join(items)}</ul>' if items else f'<p class="empty">{esc(empty)}</p>'
 
 
-def render(raw_sessions, raw_triggers, now):
+def render(raw_sessions, raw_triggers, now, hop_url=""):
     ss = [norm_session(s) for s in raw_sessions if isinstance(s, dict)]
     titles = {s["id"]: s["title"] for s in ss}
     products = {}
@@ -432,7 +432,7 @@ def render(raw_sessions, raw_triggers, now):
         css=CSS.format(light=LIGHT, dark=DARK), js=JS,
         snapshot=f'<time id="snap" datetime="{now.isoformat()}">{now:%b} {now.day}, {now:%H:%M} UTC</time>',
         counts=counts, needs=needs_html, products="".join(product_html), routines=routines_html,
-        n_sessions=len(ss))
+        n_sessions=len(ss), hop=json.dumps(hop_url if hop_url.startswith("https://") else ""))
 
 
 LIGHT = """--bg:#F3F6F4;--surface:#FFFFFF;--ink:#18211D;--muted:#5C6964;--line:#D8E0DB;
@@ -503,14 +503,12 @@ JS = """
     if(Math.abs(diff)>=u[1]||i===units.length-1)return rtf.format(Math.round(diff/u[1]),u[0]);}}
   document.querySelectorAll('time[datetime]').forEach(function(t){var d=new Date(t.getAttribute('datetime'));
     if(isNaN(d))return;t.title=t.textContent;t.textContent=rel(d);});
-  // Phones and tablets: add an "app" chip with the Claude app link (claude://code/{id}).
-  // The title keeps the web URL, which every viewer can open.
-  var ua=navigator.userAgent, touchMac=navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
-  if(/Android|iPhone|iPad|iPod/i.test(ua)||touchMac){
+  // Phones and tablets: the artifact viewer only lets https links out, so a session title
+  // goes to the hop page (hop/open.html#session_id), which hands off to the Claude app.
+  var hop=HOP_URL, ua=navigator.userAgent, touchMac=navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
+  if(hop&&(/Android|iPhone|iPad|iPod/i.test(ua)||touchMac)){
     document.querySelectorAll('a.title[data-session]').forEach(function(a){
-      var id=a.getAttribute('data-session'); if(!/^session_[A-Za-z0-9]+$/.test(id))return;
-      var app=document.createElement('a'); app.className='chip'; app.href='claude://code/'+id; app.textContent='app';
-      a.after(app);
+      var id=a.getAttribute('data-session'); if(/^session_[A-Za-z0-9]+$/.test(id))a.href=hop+'#'+id;
     });
   }
   var snap=document.getElementById('snap');
@@ -533,9 +531,9 @@ PAGE = """<title>Agent Tracker</title>
 {products}
 {routines}
 </main>
-<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. Session titles open on claude.ai; on a phone or tablet the small “app” chip tries the Claude app. Costs are this account’s own usage figures.</footer>
+<footer>Refresh from any Claude Code session on the Agent-tracker repository by running the <code>agent-tracker</code> skill, or let the scheduled Routine republish it. Costs are this account’s own usage figures.</footer>
 </div>
-<script>{js}</script>
+<script>var HOP_URL={hop};{js}</script>
 """
 
 
@@ -546,7 +544,9 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "dashboard.html"))
     args = ap.parse_args()
     sessions, triggers, source = load_records(args)
-    page = render(sessions, triggers, datetime.now(timezone.utc))
+    hop_path = os.path.join(ROOT, "tracker", "HOP_URL")   # where hop/open.html is hosted, once it is
+    hop_url = open(hop_path, encoding="utf-8").read().strip() if os.path.exists(hop_path) else ""
+    page = render(sessions, triggers, datetime.now(timezone.utc), hop_url)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(page)

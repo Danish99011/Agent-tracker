@@ -103,6 +103,14 @@ class RenderTests(unittest.TestCase):
                                   "status_bucket": "SESSION_STATUS_BUCKET_COMPLETED", "task_summary": "Running tests"})
         self.assertEqual((s["state"], s["doing"]), ("WORKING", "Running tests"))
 
+    def test_hop_url_only_when_https(self):
+        sessions = tracker.unwrap(tracker.parse_embedded_json(fixture("sessions.json")))
+        now = datetime(2026, 9, 5, 10, 0, tzinfo=timezone.utc)
+        self.assertIn('var HOP_URL="";', tracker.render(sessions, [], now))
+        self.assertIn('var HOP_URL="https://example.com/hop/open.html";',
+                      tracker.render(sessions, [], now, "https://example.com/hop/open.html"))
+        self.assertIn('var HOP_URL="";', tracker.render(sessions, [], now, "javascript:alert(1)"))
+
     def test_counts_line(self):
         self.assertIn("<b>2</b>working", self.page)    # one running turn + one with agents still going
         self.assertIn("<b>2</b>need you", self.page)   # review-ready with needs_action + failed; archived excluded
