@@ -1,0 +1,11 @@
+{"data":[
+ {"id":"trig_1","name":"Nightly regression","cron_expression":"30 21 * * 1-5","enabled":true,"next_run_at":"2026-09-05T21:30:00Z",
+  "session_request":{"config":{"sources":[{"git_repository":{"url":"https://github.com/example/shop-web"}}]}},
+  "derived_state":{"prompt":"Run the full regression suite for shop-web and email owner@example.com the results. Then do more things."},
+  "last_run":{"status":"ROUTINE_RUN_STATUS_SUCCEEDED","fired_at":"2026-09-04T21:30:00Z","finished_at":"2026-09-04T21:41:00Z"}},
+ {"id":"trig_2","name":"Hourly watch","cron_expression":"0 14-20 * * 1-5","enabled":true,"next_run_at":"2026-09-05T14:00:00Z",
+  "session_request":{"config":{"sources":[]},"events":[{"payload":{"internal_anthropic_catchall":{"message":{"role":"user","content":"Watch prices in /home/user/shop-mobile and alert on moves."}}}}]},
+  "last_run":{"status":"ROUTINE_RUN_STATUS_FAILED","fired_at":"2026-09-05T13:00:00Z","finished_at":"2026-09-05T13:02:00Z"}},
+ {"id":"trig_3","name":"One-off reminder","run_once_at":"2026-09-06T10:00:00Z","enabled":false,"ended_reason":"run_once_fired",
+  "session_request":{"config":{"sources":[]}},"derived_state":{"prompt":"Remind me to rotate the API key."}}
+]}
