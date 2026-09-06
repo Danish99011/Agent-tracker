@@ -42,12 +42,17 @@ first one attached. The other repositories show as "also" chips.
 
 Session titles link to claude.ai. The artifact viewer in the Claude mobile app
 only lets ordinary web links out, so an app link on the page itself does nothing
-there. To land in the app instead of the browser, host `hop/open.html` on any
-https static host and put its URL in `tracker/HOP_URL`. On phones and tablets
-the titles then open that page, which hands off to the Claude app (an Android
-intent link or the iOS `claude://code/{session-id}` link) and offers the web
-session as a fallback. The session id travels in the URL fragment, so the host
-never sees it.
+there. Instead the titles go through a hop page that hands off to the Claude app
+(an Android intent link, or the iOS `claude://code/{session-id}` link) and offers
+the web session as a fallback. The session id travels in the URL fragment, so the
+host never sees it.
+
+`hop/open.html` is served by GitHub Pages for this repository, and
+`tracker/HOP_URL` holds its address. Pages currently deploys from the
+`claude/agent-visibility-sessions-yh9ya4` branch; after merging, switch the Pages
+source to `main` in Settings → Pages — the published address does not change. If
+`tracker/HOP_URL` is absent or is not an `https://` URL, titles simply keep the
+claude.ai link.
 
 Times show as "3 hours ago" in the viewer's timezone and as absolute UTC on hover.
 A "snapshot is over 6 hours old" badge appears when the page has gone stale.
