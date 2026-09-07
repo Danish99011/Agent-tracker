@@ -85,7 +85,7 @@ class RenderTests(unittest.TestCase):
         self.assertIn("Agents running", row)
         self.assertNotIn("Review ready", row)
         self.assertIn("turn ended, agents reported still running", row)
-        needs = self.page[self.page.index("Needs you"):self.page.index("<h2>Usage")]
+        needs = self.page[self.page.index("Needs you"):self.page.index("<h2>Last 7 days")]
         self.assertNotIn("Video pipeline", needs)
         self.assertIn("Price alerts", needs)      # explicit needs_action still counts
 
@@ -155,6 +155,42 @@ class RenderTests(unittest.TestCase):
         sessions = tracker.unwrap(tracker.parse_embedded_json(fixture("sessions.json")))
         later = datetime(2027, 1, 1, tzinfo=timezone.utc)      # long after resetsAt in the fixture
         self.assertNotIn("usage window resets", tracker.render(sessions, [], later))
+
+    def test_timeline_and_schedule(self):
+        tl = self.page[self.page.index("<h2>Last 7 days"):self.page.index("<h2>Usage")]
+        self.assertIn('aria-label="Checkout flow rewrite: Working,', tl)
+        self.assertIn('class="tl-state ok">Working<', tl)          # state as text, not colour alone
+        self.assertIn("Sat 05", tl)                                 # day axis reaches the last day
+        self.assertNotIn("Old spike", tl)                           # older than the window
+        sched = self.page[self.page.index("<h2>The automated day"):self.page.index('<section class="product">')]
+        self.assertIn('aria-label="Nightly regression: fires at 21:00 UTC, Mon–Fri"', sched)
+        self.assertIn('aria-label="Hourly watch: fires at 14:00, 15:00, 16:00, 17:00, 18:00, 19:00, 20:00 UTC, Mon–Fri"', sched)
+        self.assertNotIn("One-off reminder", sched)                 # already ended
+
+    def test_stale_next_run_is_not_shown(self):
+        # next_run_at can lag behind reality; a time already past is not a forecast.
+        t = {"id": "trig_x", "name": "Late", "cron_expression": "0 6 * * 1-5", "enabled": True,
+             "next_run_at": "2026-09-05T06:00:00Z", "session_request": {"config": {"sources": []}}}
+        nt = tracker.norm_trigger(t, [])
+        past = datetime(2026, 9, 9, tzinfo=timezone.utc)
+        self.assertNotIn("next ", tracker.trigger_row(nt, past))
+        self.assertIn("next ", tracker.trigger_row(nt, datetime(2026, 9, 1, tzinfo=timezone.utc)))
+
+    def test_cron_slots(self):
+        self.assertEqual(tracker.cron_slots("0 6 * * 1-5"), ([6], "Mon–Fri"))
+        self.assertEqual(tracker.cron_slots("0 14-16 * * *"), ([14, 15, 16], "every day"))
+        self.assertEqual(tracker.cron_slots("30 */6 * * 0,6"), ([0, 6, 12, 18], "Sun, Sat"))
+        self.assertEqual(tracker.cron_slots("0 0 1 * *"), (None, None))   # day-of-month: not a daily strip
+        self.assertEqual(tracker.cron_slots("nonsense"), (None, None))
+
+    def test_usage_window_warning(self):
+        warn = [{"id": "s", "session_status": "SESSION_STATUS_IDLE", "title": "Busy one",
+                 "external_metadata": {"rate_limit_info": {"rateLimitType": "seven_day", "status": "allowed_warning"}}}]
+        ok = [{"id": "s", "session_status": "SESSION_STATUS_IDLE", "title": "Fine",
+               "external_metadata": {"rate_limit_info": {"rateLimitType": "five_hour", "status": "allowed"}}}]
+        self.assertIn("Busy one: seven-day window allowed warning",
+                      tracker.warnings_line([tracker.norm_session(x) for x in warn]))
+        self.assertEqual(tracker.warnings_line([tracker.norm_session(x) for x in ok]), "")
 
     def test_format_helpers(self):
         self.assertEqual([tracker.compact(x) for x in (0, 999, 1000, 88263, 1577284, 2.5e9)],

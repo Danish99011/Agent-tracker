@@ -281,6 +281,34 @@ def _days(spec):
     return None if None in out else ", ".join(out)
 
 
+def cron_slots(expr):
+    """(hours it fires, day label) for a 5-field cron, or (None, None) if not a simple one."""
+    parts = expr.split()
+    if len(parts) != 5:
+        return None, None
+    minute, hour, dom, mon, dow = parts
+    if dom != "*" or mon != "*" or not minute.isdigit():
+        return None, None
+    days = _days(dow)
+    if days is None:
+        return None, None
+    if hour == "*":
+        hours = list(range(24))
+    elif hour.isdigit():
+        hours = [int(hour)]
+    elif re.fullmatch(r"\d+-\d+", hour):
+        a, b = (int(x) for x in hour.split("-"))
+        hours = list(range(a, b + 1)) if a <= b <= 23 else None
+    elif re.fullmatch(r"\*/\d+", hour):
+        step = int(hour[2:])
+        hours = list(range(0, 24, step)) if step else None
+    elif all(h.isdigit() and int(h) <= 23 for h in hour.split(",")):
+        hours = sorted(int(h) for h in hour.split(","))
+    else:
+        hours = None
+    return (hours, days) if hours else (None, None)
+
+
 def human_cron(expr):
     parts = expr.split()
     if len(parts) != 5:
@@ -435,7 +463,7 @@ def session_row(s, titles, now, show_product=False):
             f'{session_details(s, titles, now)}</div></li>')
 
 
-def trigger_row(t, show_product=True):
+def trigger_row(t, now, show_product=True):
     if t["last_status"] == "FAILED":
         p = pill("Last run failed", "bad")
     elif t["ended"] or t["suspended"]:
@@ -447,7 +475,7 @@ def trigger_row(t, show_product=True):
     chips = chip(t["product"].split("/")[-1] + ("?" if t["inferred"] else "")) if show_product and t["product"] else ""
     meta = [
         esc(human_cron(t["cron"])) if t["cron"] else (when(t["once"], "once at ") if t["once"] else ""),
-        when(t["next"], "next ") if t["enabled"] and t["next"] else "",
+        when(t["next"], "next ") if t["enabled"] and t["next"] and t["next"] > now else "",
         (when(t["last_at"], f"last run {t['last_status'].lower() or 'recorded'} ") if t["last_at"]
          else ("never run" if not t["last_status"] else "")),
         f"took {duration(t['last_secs'])}" if t["last_secs"] is not None else "",
@@ -520,6 +548,87 @@ def usage_section(ss, ts):
             f'{bar_table("By product", by_product, total)}</div>{note}')
 
 
+def timeline_section(ss, now, days=7):
+    """When each session was active over the last `days`. One row per session,
+    bar from first to last activity, coloured by state and labelled in text."""
+    span = days * 86400
+    start = now.timestamp() - span
+    rows_ = []
+    for s in sorted(ss, key=lambda s: s["updated"] or now, reverse=True):
+        a, b = s["created"], s["updated"]
+        if not a or not b or b.timestamp() < start:
+            continue
+        clipped = a.timestamp() < start
+        left = 100 * max(0.0, a.timestamp() - start) / span
+        width = 100 * (min(b.timestamp(), now.timestamp()) - max(a.timestamp(), start)) / span
+        label, kind = STATE.get(s["state"], (s["state"].capitalize(), "idle"))
+        live = s["state"] in LIVE
+        aria = (f'{s["title"]}: {label}, {a:%b %d %H:%M} to {b:%b %d %H:%M} UTC'
+                f'{", started earlier" if clipped else ""}')
+        rows_.append(
+            f'<li><span class="tl-name" title="{esc(s["title"])}">{esc(s["title"])}</span>'
+            f'<span class="tl-track"><i class="tl-bar {kind}{" clipped" if clipped else ""}'
+            f'{" live" if live else ""}" style="left:{left:.2f}%;width:{max(width, 0.6):.2f}%"'
+            f' role="img" aria-label="{esc(aria)}" title="{esc(aria)}"></i></span>'
+            f'<span class="tl-state {kind}">{esc(label)}</span></li>')
+    if not rows_:
+        return ""
+    ticks = []
+    for d in range(days + 1):
+        t = datetime.fromtimestamp(start + d * 86400, timezone.utc)
+        ticks.append(f'<span style="left:{100 * d / days:.2f}%">{t:%a %d}</span>')
+    legend = "".join(f'<span class="lg"><i style="color:var(--{k})"></i>{esc(v)}</span>' for k, v in
+                     [("ok", "working"), ("warn", "needs you"), ("bad", "failed"), ("idle", "idle or done")])
+    return (f'<h2>Last {days} days <span class="n">{len(rows_)} sessions</span></h2>'
+            f'<div class="tl"><div class="tl-axis">{"".join(ticks)}</div>'
+            f'<ul class="tl-rows">{"".join(rows_)}</ul>'
+            f'<p class="meta"><span>each bar runs from the session\u2019s first to its last activity</span>'
+            f'<span>times in UTC</span></p><p class="legend">{legend}</p></div>')
+
+
+def schedule_section(ts, now):
+    """The automated day: which hours each Routine fires, on one 24-hour axis."""
+    rows_, other = [], []
+    for t in sorted(ts, key=lambda t: (t["next"] or now)):
+        if not t["enabled"] or t["ended"] or t["suspended"]:
+            continue
+        hours, days = cron_slots(t["cron"]) if t["cron"] else (None, None)
+        if not hours:
+            if t["cron"] or t["once"]:
+                other.append(t)
+            continue
+        marks = "".join(f'<i style="left:{100 * h / 24:.4f}%" title="{h:02d}:00 UTC"></i>' for h in hours)
+        aria = f'{t["name"]}: fires at {", ".join(f"{h:02d}:00" for h in hours)} UTC, {days}'
+        rows_.append(
+            f'<li><span class="tl-name">{esc(t["name"])} <small>{esc(days)}</small></span>'
+            f'<span class="tl-track sched" role="img" aria-label="{esc(aria)}">{marks}</span></li>')
+    if not rows_ and not other:
+        return ""
+    ticks = "".join(f'<span style="left:{100 * h / 24:.2f}%">{h:02d}</span>' for h in range(0, 25, 6))
+    extra = "".join(f'<li class="plain">{esc(t["name"])} \u2014 {esc(human_cron(t["cron"]) if t["cron"] else "")}'
+                    f'{when(t["once"], "once at ")}</li>' for t in other)
+    nxt = min((t["next"] for t in ts if t["enabled"] and t["next"] and t["next"] > now), default=None)
+    return (f'<h2>The automated day <span class="n">{len(rows_) + len(other)} on</span></h2>'
+            f'<div class="tl stack"><div class="tl-axis hours">{ticks}</div>'
+            f'<ul class="tl-rows">{"".join(rows_)}{extra}</ul>'
+            f'<p class="meta"><span>hour of day, UTC</span>'
+            f'{when(nxt, "next run ") if nxt else ""}</p></div>')
+
+
+def warnings_line(ss):
+    """Usage windows the API flags as anything other than plainly allowed."""
+    out = []
+    for s in ss:
+        r = s["rate"]
+        if not r or s["state"] == "ARCHIVED":
+            continue
+        st = r["status"].lower()
+        if r["overage"] or (st and st != "allowed"):
+            what = "using overage" if r["overage"] else st.replace("_", " ")
+            out.append(f'{s["title"]}: {r["type"].replace("_", "-")} window {what}')
+    return (f'<p class="warnbar">{esc("; ".join(out))}</p>') if out else ""
+
+
 # ---------------------------------------------------------------- render: page
 
 def render(raw_sessions, raw_triggers, now, hop_url=""):
@@ -541,7 +650,7 @@ def render(raw_sessions, raw_triggers, now, hop_url=""):
 
     needs_html = (f'<h2>Needs you <span class="n">{len(needs) + len(failed_routines)}</span></h2>'
                   + rows([session_row(s, titles, now, show_product=True) for s in needs]
-                         + [trigger_row(t) for t in failed_routines], "Nothing is waiting on you."))
+                         + [trigger_row(t, now) for t in failed_routines], "Nothing is waiting on you."))
 
     def latest(key):
         return max((s["updated"] or epoch for s in products[key][1]), default=epoch)
@@ -552,7 +661,7 @@ def render(raw_sessions, raw_triggers, now, hop_url=""):
         sessions.sort(key=lambda s: (order.get(s["state"], 1 if s["needs_you"] else 2), -(s["updated"] or epoch).timestamp()))
         open_rows = [session_row(s, titles, now) for s in sessions if s["state"] != "ARCHIVED"]
         archived = [session_row(s, titles, now) for s in sessions if s["state"] == "ARCHIVED"]
-        routines = [trigger_row(t, show_product=False) for t in ts if t["product"].lower() == key and key]
+        routines = [trigger_row(t, now, show_product=False) for t in ts if t["product"].lower() == key and key]
         live = sum(s["state"] in LIVE for s in sessions)
         spend = sum(s["cost"] or 0 for s in sessions)
         counts = " · ".join(x for x in [
@@ -571,7 +680,7 @@ def render(raw_sessions, raw_triggers, now, hop_url=""):
         html_.append("</section>")
         product_html.append("".join(html_))
 
-    unassigned = [trigger_row(t) for t in ts if not t["product"]]
+    unassigned = [trigger_row(t, now) for t in ts if not t["product"]]
     routines_html = (f'<h2>Routines without a repository <span class="n">{len(unassigned)}</span></h2>'
                      f'{rows(unassigned, "")}') if unassigned else ""
 
@@ -592,6 +701,7 @@ def render(raw_sessions, raw_triggers, now, hop_url=""):
         css=CSS.replace("@LIGHT@", LIGHT).replace("@DARK@", DARK), js=JS,
         snapshot=f'<time id="snap" datetime="{now.isoformat()}">{now:%b} {now.day}, {now:%H:%M} UTC</time>',
         window=window, counts=counts, needs=needs_html, usage=usage_section(ss, ts),
+        warnings=warnings_line(ss), timeline=timeline_section(ss, now), schedule=schedule_section(ts, now),
         products="".join(product_html), routines=routines_html, n_sessions=len(ss),
         hop=json.dumps(hop_url if hop_url.startswith("https://") else ""))
 
@@ -662,11 +772,45 @@ details.more{margin-top:4px} details.more summary{font-size:12.5px;padding:2px 0
 .bar{height:6px;background:var(--idle-soft);border-radius:3px;margin:7px 0 2px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
 .note{color:var(--muted);font-size:13px;margin:10px 0 0}
+.warnbar{margin:16px 0 0;padding:9px 13px;border-radius:6px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:700;border:1px solid transparent}
+.tl{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.tl-axis{position:relative;height:15px;margin:0 0 6px calc(var(--tl-name) + 10px);color:var(--muted);font-size:11.5px;letter-spacing:.04em}
+.tl-axis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.tl-axis span:first-child{transform:none} .tl-axis span:last-child{transform:translateX(-100%)}
+.tl{--tl-name:190px}
+.tl.stack{--tl-name:0px}
+.tl.stack .tl-axis{margin-left:0}
+.tl.stack .tl-rows{gap:11px}
+.tl.stack .tl-rows li{display:block}
+.tl.stack .tl-track{display:block;width:100%}
+.tl.stack .tl-name{display:block;white-space:normal;margin-bottom:4px}
+.tl.stack .tl-name small{font-weight:400;color:var(--muted);font-size:12px;margin-left:5px}
+.tl-rows{display:grid;gap:5px}
+.tl-rows li{display:grid;grid-template-columns:var(--tl-name) minmax(0,1fr) max-content;align-items:center;gap:10px}
+.tl-rows li.plain{display:block;color:var(--muted);font-size:13px;padding-top:2px}
+.tl-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-track{position:relative;height:14px;background:var(--idle-soft);border-radius:3px;overflow:hidden}
+.tl-bar{position:absolute;top:0;height:100%;border-radius:3px;min-width:3px}
+.tl-bar.ok{background:var(--ok)} .tl-bar.warn{background:var(--warn)}
+.tl-bar.bad{background:var(--bad)} .tl-bar.idle{background:var(--idle)}
+.tl-state.ok{color:var(--ok)} .tl-state.warn{color:var(--warn)}
+.tl-state.bad{color:var(--bad)} .tl-state.idle{color:var(--muted)}
+.tl-bar.clipped{border-top-left-radius:0;border-bottom-left-radius:0}
+.tl-bar.live{animation:pulse 2s ease-in-out infinite}
+.tl-track.sched{overflow:visible;background:transparent;border-top:1px solid var(--line);height:14px;border-radius:0}
+.tl-track.sched i{position:absolute;top:-1px;width:3px;height:12px;border-radius:2px;background:var(--accent)}
+.tl-state{font-size:12px;font-weight:700;white-space:nowrap}
+.tl .meta{margin-top:9px !important}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 0;color:var(--muted);font-size:12.5px}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg i{width:10px;height:10px;border-radius:2px;background:currentColor}
+
 .empty{color:var(--muted);padding:14px;border:1px dashed var(--line);border-radius:6px;margin:0}
 .stale{color:var(--warn);background:var(--warn-soft);padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700}
 footer{margin-top:48px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px;line-height:1.6}
 footer code{font:12.5px var(--mono)}
-@media (max-width:600px){.wrap{padding:22px 14px 48px}.row{grid-template-columns:1fr;gap:6px}.counts{gap:8px 18px}.counts b{font-size:21px}.kv{grid-template-columns:1fr;gap:0 0}.kv dt{margin-top:6px}}
+@media (max-width:600px){.tl{--tl-name:104px}.tl-rows li{gap:8px}.tl-state{font-size:11px}
+.wrap{padding:22px 14px 48px}.row{grid-template-columns:1fr;gap:6px}.counts{gap:8px 18px}.counts b{font-size:21px}.kv{grid-template-columns:1fr;gap:0 0}.kv dt{margin-top:6px}}
 """
 
 JS = """
@@ -701,8 +845,11 @@ PAGE = """<title>Agent Tracker</title>
   {counts}
 </header>
 <main>
+{warnings}
 {needs}
+{timeline}
 {usage}
+{schedule}
 {products}
 {routines}
 </main>

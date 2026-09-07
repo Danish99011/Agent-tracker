@@ -20,9 +20,16 @@ and the web at once. Sessions are the agents; Routines are the scheduled agents.
   - archived sessions folded away under a disclosure.
 - **Routines without a repository**, when a Routine pins no source repo and its
   prompt does not name a known product.
+- **Last 7 days**: one bar per session from its first to its last activity,
+  coloured by state and labelled with that state in text, on a shared day axis.
 - **Usage**: total spend, tokens out, tokens in and cached, and models in use,
   then spend broken down by model (with the sessions each model serves) and by
   product. Each product heading also carries its own spend.
+- **The automated day**: every enabled Routine on one 24-hour UTC axis, with a
+  mark at each hour it fires. Routines whose schedule is not a simple daily one
+  are listed underneath in words.
+- A **warning bar** at the top when the API reports a usage window as anything
+  other than plainly allowed, naming the session and the window.
 - **All details** under every session: session id, start and last activity,
   API state, model served and configured, effort, permission mode, where it runs,
   the device it was started from, repositories, tags, the session it continues,
@@ -56,6 +63,9 @@ claude.ai link.
 
 Times show as "3 hours ago" in the viewer's timezone and as absolute UTC on hover.
 A "snapshot is over 6 hours old" badge appears when the page has gone stale.
+Times the API reports but that have already passed — a usage window reset, a
+Routine's next run — are treated as stale and hidden rather than shown as
+forecasts.
 
 ## Refresh it
 
