@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Open in Claude</title>
+<style>
+:root{--bg:#F3F6F4;--ink:#18211D;--muted:#5C6964;--accent:#0B6B67;--line:#D8E0DB}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1512;--ink:#E4EBE7;--muted:#96A39D;--accent:#5BC8BC;--line:#25302B}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{padding:32px 24px;max-width:420px;text-align:center}
+h1{font-size:22px;margin:0 0 8px;text-wrap:balance}
+p{color:var(--muted);margin:0 0 24px}
+.btn{display:block;padding:14px 18px;border-radius:10px;font-weight:700;text-decoration:none;margin:10px 0;background:var(--accent);color:#fff}
+.btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--line)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="h">Opening in the Claude app…</h1>
+  <p id="p">If nothing happens in a moment, tap the button.</p>
+  <a id="app" class="btn" href="#">Open in Claude app</a>
+  <a id="web" class="btn secondary" href="#">Open on the web instead</a>
+</main>
+<script>
+// The Agent Tracker links here as open.html#session_xxx. The id stays in the fragment,
+// so it is never sent to the host serving this page.
+(function(){
+  var id=(location.hash||'').slice(1);
+  var app=document.getElementById('app'), web=document.getElementById('web');
+  if(!/^session_[A-Za-z0-9]+$/.test(id)){
+    document.getElementById('h').textContent='No session in this link';
+    document.getElementById('p').textContent='Open a session from the Agent Tracker page.';
+    app.hidden=true; web.href='https://claude.ai/code'; web.textContent='Go to Claude Code'; return;
+  }
+  var webUrl='https://claude.ai/code/'+id;
+  var ua=navigator.userAgent, android=/Android/i.test(ua);
+  var ios=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  // Android: an intent link lets Chrome hand the documented claude://code/{id} deep link
+  // straight to the Claude app, falling back to the web session if the app is missing.
+  var appUrl=android?'intent://code/'+id+'#Intent;scheme=claude;package=com.anthropic.claude;S.browser_fallback_url='+encodeURIComponent(webUrl)+';end'
+            :ios?'claude://code/'+id:webUrl;
+  app.href=appUrl; web.href=webUrl;
+  if(android||ios){setTimeout(function(){location.href=appUrl;},150);}  // may be ignored without a tap; the button is the sure path
+  else{location.replace(webUrl);}
+})();
+</script>
+</body>
+</html>
