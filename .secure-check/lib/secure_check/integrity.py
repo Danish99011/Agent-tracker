@@ -122,7 +122,9 @@ def all_commits_marked(root: Path, rev_args: list[str] | str) -> bool:
     """True when every commit in the range carries the owner's approval marker in its subject."""
     args = [rev_args] if isinstance(rev_args, str) else list(rev_args)
     try:
-        subjects = run_git(["log", "--format=%s", *args], cwd=root)
+        # merge commits carry no change of their own (GitHub's merge button cannot add the
+        # marker); the commits they bring in are what must be marked.
+        subjects = run_git(["log", "--no-merges", "--format=%s", *args], cwd=root)
     except RuntimeError:
         return False
     lines = [s for s in subjects.splitlines() if s.strip()]

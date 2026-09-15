@@ -54,6 +54,10 @@ def cmd_scan(args) -> int:
         hist, n = gitscan.scan_history(root, sc, policy, rev_range=args.range, max_commits=policy.max_commits)
         findings += hist
         findings += integrity.range_checks(root, policy, args.range)
+        # the same owner-approval rule the hooks apply: protected-path changes pass when every
+        # (non-merge) commit in the range carries the marker; tamper rules are never waived
+        findings = integrity.apply_owner_approval(dedupe(findings), root, args.range,
+                                                  os.environ.get("SECURE_CHECK_OWNER") == "1")
         meta.update(mode="range", range=args.range, commits=n)
     elif args.paths:
         for p in args.paths:
