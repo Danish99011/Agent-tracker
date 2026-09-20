@@ -18,7 +18,7 @@
     ".secure-check/lib/secure_check/findings.py": "a704f06b7bbad8abfa32d157f886ae7ec6b5ba262a000d024a0052d70178c831",
     ".secure-check/lib/secure_check/fleet.py": "5a1aa956ddfbf208611f188b8a2b2be65f36becb12fa12a3deaeb054af800886",
     ".secure-check/lib/secure_check/gitscan.py": "b05af22bc3627e16c8d7e51a4eca4402fde8e295f3b0c2506b9217e1647f80d0",
-    ".secure-check/lib/secure_check/hook.py": "fc302d7e13dc57e525e6f340eff78aa6b98354539087ee0b723782949882eebe",
+    ".secure-check/lib/secure_check/hook.py": "908ab45ff57145336a0213ed2f74f7d9f25deb4ce5180158cda611215da9c6c4",
     ".secure-check/lib/secure_check/installer.py": "fffdd5f4ef06db2797dd1d1d526d9d6767e5504d4a074f87c0ce65cb3f0398b8",
     ".secure-check/lib/secure_check/integrity.py": "4349cd4485bb8e42c279fe598603effaf6933c6f5f4716dd2d681b79a9e54966",
     ".secure-check/lib/secure_check/patterns.py": "4809fdd9baccd52f4d2dbe17943ada32ef04792524c2ab3b1a41a9ecba1694d0",
@@ -26,7 +26,7 @@
     ".secure-check/lib/secure_check/profiles.py": "065232298a4fa6c9cb73761d0efefd0ef5ad448e3b75aed33589cb762d9cb85b",
     ".secure-check/lib/secure_check/repo.py": "71f1e51fbe9e02cc520ca33249b8a3085435d1d235865595a56aba8e6c0daa8a",
     ".secure-check/lib/secure_check/report.py": "4f5af5e3a939f320a5ad259a642a4917dd491f6b902dabc0b03cfbb012167eb8",
-    ".secure-check/lib/secure_check/secrets.py": "fb2c0f75b5775a28d3956680d5000a37b06403fa394f877c64bd17e2ab0e68e1",
+    ".secure-check/lib/secure_check/secrets.py": "7885dcb9f22652df5e42bff1f92bb117b39fb5c9bd1ad7d12a18d7bb09ffdfd9",
     ".secure-check/lib/secure_check/templates.py": "b14444ec454b79f75622268bc11a7685bf0a8a22a05c95fb31afd44cb36966e5",
     ".secure-check/lib/secure_check/util.py": "34781bc71282604af9d1eff9867343affa7b67cf13012a0104907400d5264d13"
   },

@@ -113,7 +113,8 @@ WRAPPERS = ("sudo", "time", "nice", "ionice", "chrt", "nohup", "setsid", "setarc
             "proxychains4", "catchsegv")
 RUNNERS = ("env", "xargs")  # a wrapper ONLY when a real command follows (bare `env` is a dump)
 SHELLS = ("sh", "bash", "zsh", "dash", "ash", "ksh", "busybox")
-_GIT_VERB_RAW = re.compile(r"(?:^|[\s/])git\b[^\n;|&]*?\b(commit|push|add)\b")
+# the verb must stand alone: `--no-commit`, `--commit-graph`, `add-on` are flags/words, not verbs
+_GIT_VERB_RAW = re.compile(r"(?:^|[\s/])git\b[^\n;|&]*?(?<=\s)(commit|push|add)(?=\s|$)")
 
 
 def _strip_heredocs(command: str) -> str:

@@ -31,6 +31,26 @@ CONFIG_SECRET_LINE = re.compile(
 CONFIG_BENIGN_VALUE = re.compile(r"(?i)^(?:true|false|none|null|e[n]v|environment|file|vault|keychain|\$\{.*\}|\$[A-Z_]+|/[\w./-]*|https?://[^\s]+|[a-z_]+\(.*\)|os\.environ.*)$")
 
 
+def jwt_adjust(token: str) -> tuple[str, str] | None:
+    """Downgrade a JWT that provably grants nothing: expired, or a short-lived signed-URL token
+    from a known issuer (GitHub release-asset downloads). Returns (severity, note) or None."""
+    import base64
+    import json
+    import time
+    try:
+        payload_b64 = token.split(".")[1]
+        payload_b64 += "=" * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+    except Exception:
+        return None
+    exp = payload.get("exp")
+    if isinstance(exp, (int, float)) and exp < time.time():
+        return "low", "expired JSON Web Token (grants nothing now; remove it from the file anyway)"
+    if payload.get("iss") == "github.com" and str(payload.get("aud", "")).endswith("githubusercontent.com"):
+        return "low", "GitHub short-lived download-link token (not your credential; strip query strings from saved URLs)"
+    return None
+
+
 class Scanner:
     def __init__(self, policy: Policy):
         self.policy = policy
@@ -69,9 +89,14 @@ class Scanner:
                     if fp in seen_here:
                         continue
                     seen_here.add(fp)
+                    severity, message = pat.severity, pat.description
+                    if pat.id == "jwt":
+                        adj = jwt_adjust(value)
+                        if adj:
+                            severity, message = adj
                     out.append(Finding(
-                        rule=pat.id, severity=pat.severity, path=path, line=lineno,
-                        message=pat.description, fingerprint=fp, preview=redact(value),
+                        rule=pat.id, severity=severity, path=path, line=lineno,
+                        message=message, fingerprint=fp, preview=redact(value),
                         commit=commit, fix=pat.fix, tags=list(pat.tags),
                     ))
             if not dotenv and not seen_here and (base.lower().endswith(CONFIG_EXT)
