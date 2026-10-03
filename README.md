@@ -7,6 +7,51 @@ you, and which Routines are scheduled to run next.
 It is built for someone running many Claude Code sessions from a phone, a tablet
 and the web at once. Sessions are the agents; Routines are the scheduled agents.
 
+## Project status (read this first if you're picking this up fresh)
+
+**Shipped and merged to `main`.** Built across several sessions, reviewed via
+pull request, merged by the owner. Tests pass (`python3 -m unittest discover
+tests`), the renderer runs cleanly against live account data, and the page is
+published at the URL in `tracker/ARTIFACT_URL`:
+<https://claude.ai/code/artifact/49e2f236-117e-4750-8153-6fe434c3e2f3>. The
+mobile hand-off page is live on GitHub Pages at the URL in `tracker/HOP_URL`:
+<https://danish99011.github.io/Agent-tracker/hop/open.html>, now deployed from
+`main` (it moved there after merge, as planned — see the Pages note below).
+
+**Not yet verified — the two open items for whoever continues this:**
+
+1. **The phone tap-to-app hand-off has never been confirmed on a real device.**
+   `hop/open.html` is built and reasoned through (Android via an intent URI,
+   iOS via `claude://code/{id}`) but no one has tapped a session title on a
+   phone and watched it land in the Claude app. If you have device access or
+   the owner can test it, do that first — it's the one unverified assumption
+   in the whole system. If it fails, the Android intent syntax or the iOS
+   scheme is the likely culprit; both are isolated to `hop/open.html`.
+2. **No refresh Routine exists.** The dashboard only updates when a session
+   runs `/agent-tracker` by hand — this was a deliberate choice (each
+   automated firing costs usage, and account spend was already high). Ask the
+   owner for a cadence before creating one; see "Schedule it" below.
+
+**Ideas raised but not built**, worth asking the owner about before building:
+a trend view of spend/usage over time (today's Usage section is a point-in-time
+total, not a history); a push or email digest of the Needs-you list so it
+reaches the owner without opening the page; search or filtering once the
+account has enough sessions that one page gets long.
+
+**Unrelated addition to be aware of, not part of Agent Tracker:** between
+sessions, the owner merged a separate `secure-check` security guard into this
+repo (`.secure-check/`, `.claude/agents/security-guard.md`,
+`.claude/settings.json`, `.github/workflows/secure-check.yml`). It installs
+Claude Code hooks that scan every `Bash`/`Write`/`Edit` call and every commit
+for secrets, and it treats `.claude/**`, `.github/workflows/**`,
+`.secure-check.toml` and `.secure-check/**` as protected: changing them
+without the owner's current, explicit approval is flagged as a finding, in the
+pre-push hook and in CI. It touches none of this project's files and all
+tests still pass. Read `.secure-check/README.md` before touching anything
+outside `tracker/`, `tests/`, `hop/`, `.claude/skills/agent-tracker/`, or this
+README — and don't disable or edit the guard itself to get past a block it
+raises; that's the one thing on this repo that needs the owner's word first.
+
 ## What the page shows
 
 - **Needs you**: sessions that are review-ready or failed, sessions whose last
@@ -55,9 +100,7 @@ the web session as a fallback. The session id travels in the URL fragment, so th
 host never sees it.
 
 `hop/open.html` is served by GitHub Pages for this repository, and
-`tracker/HOP_URL` holds its address. Pages currently deploys from the
-`claude/agent-visibility-sessions-yh9ya4` branch; after merging, switch the Pages
-source to `main` in Settings → Pages — the published address does not change. If
+`tracker/HOP_URL` holds its address. Pages deploys from `main`. If
 `tracker/HOP_URL` is absent or is not an `https://` URL, titles simply keep the
 claude.ai link.
 
@@ -79,14 +122,16 @@ runs the renderer, and republishes the page at the URL stored in
 
 ## Schedule it
 
-Ask any Claude Code session to create a Routine, for example:
+No Routine does this yet — refresh is manual (`/agent-tracker`) by design so
+far. To add one, ask any Claude Code session to create it, for example:
 
 > Create a Routine named "Agent Tracker refresh" that runs every 4 hours in a fresh
 > session on Danish99011/Agent-tracker with the prompt: "Read
 > .claude/skills/agent-tracker/SKILL.md and follow it exactly."
 
 Every firing is a normal session and costs usage, so pick a cadence you would
-actually look at.
+actually look at — check in with the owner before creating one; see "Project
+status" above.
 
 ## How it works
 
