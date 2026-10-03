@@ -55,6 +55,20 @@ def exists_at_head(root: Path, path: str) -> bool:
     return proc.returncode == 0
 
 
+def head_fingerprints(root: Path, scanner: Scanner, path: str) -> set[str] | None:
+    """Fingerprints of every secret the scanner still finds in HEAD's copy of ``path``.
+
+    ``None`` when the file is not in HEAD at all. Used to say whether a secret
+    found in history is *still there* (the value, not merely the file).
+    """
+    proc = subprocess.run(["git", "cat-file", "-p", f"HEAD:{path}"], cwd=str(root),
+                          capture_output=True, env=_git_env())
+    if proc.returncode != 0:
+        return None
+    text = proc.stdout.decode("utf-8", "replace")
+    return {f.fingerprint for f in scanner.scan_text(text, path) if f.fingerprint}
+
+
 def scan_history(root: Path, scanner: Scanner, policy: Policy, *, rev_range: str | list[str] | None = None,
                  all_refs: bool = False, max_commits: int | None = None) -> tuple[list[Finding], int]:
     """Scan every ADDED line and every ADDED file name in the selected commits.
@@ -129,11 +143,21 @@ def scan_history(root: Path, scanner: Scanner, policy: Policy, *, rev_range: str
     if proc.returncode not in (0, 141):
         raise RuntimeError(f"git log failed: {err_txt.strip()[:300]}")
 
-    # Annotate whether the offending file is still in HEAD (revoke either way;
-    # purge only matters if it is gone from HEAD but alive in history).
-    cache: dict[str, bool] = {}
+    # Annotate whether the offending VALUE is still in HEAD (revoke either way;
+    # purge only matters if it is gone from HEAD but alive in history). A file
+    # that still exists but no longer carries the secret counts as removed; a
+    # finding without a fingerprint (a credential-shaped file name) falls back
+    # to whether the file itself is still in HEAD.
+    cache: dict[str, set[str] | None] = {}
     for f in findings:
         if f.path not in cache:
-            cache[f.path] = exists_at_head(root, f.path)
-        f.tags.append("still-in-HEAD" if cache[f.path] else "removed-from-HEAD")
+            cache[f.path] = head_fingerprints(root, scanner, f.path)
+        present = cache[f.path]
+        if present is None:
+            still = False
+        elif f.fingerprint:
+            still = f.fingerprint in present
+        else:
+            still = True
+        f.tags.append("still-in-HEAD" if still else "removed-from-HEAD")
     return findings, commits

@@ -9,4 +9,4 @@ Standard library only (Python 3.11+). Design rules:
 * Exit codes: 0 clean, 1 findings at or above the fail threshold, 2 tool error.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
