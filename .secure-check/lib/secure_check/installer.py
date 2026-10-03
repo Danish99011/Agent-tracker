@@ -136,12 +136,28 @@ def merge_claude_settings(target: Path, log: list[str]) -> None:
     log.append(f"  + {path.relative_to(target)} (hooks + deny rules merged)")
 
 
+def _ignore_key(rule: str) -> str:
+    """Normalise a gitignore rule so equivalent spellings compare equal.
+
+    ``/data/``, ``data/`` and ``data/*`` all ignore the contents of ``data``;
+    a repository that deliberately tracks public data under ``data/`` writes
+    ``data/*`` plus ``!data/public/`` re-includes, and re-running ``init``
+    must not append the blanket ``data/`` on top of that.
+    """
+    r = rule.strip()
+    if r.startswith("/"):
+        r = r[1:]
+    if r.endswith("/*"):
+        r = r[:-1]
+    return r
+
+
 def ensure_gitignore(target: Path, log: list[str]) -> None:
     gi = target / ".gitignore"
     existing = gi.read_text(encoding="utf-8") if gi.exists() else ""
-    have = {ln.strip() for ln in existing.splitlines()}
+    have = {_ignore_key(ln) for ln in existing.splitlines() if ln.strip()}
     missing = [ln for ln in DEFAULT_IGNORE_BLOCK.splitlines()
-               if ln.strip() and not ln.startswith("#") and ln.strip() not in have]
+               if ln.strip() and not ln.startswith("#") and _ignore_key(ln) not in have]
     if not missing:
         log.append("  = .gitignore already covers the standard block")
         return

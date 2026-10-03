@@ -19,7 +19,7 @@
     ".secure-check/lib/secure_check/fleet.py": "5a1aa956ddfbf208611f188b8a2b2be65f36becb12fa12a3deaeb054af800886",
     ".secure-check/lib/secure_check/gitscan.py": "9f91ca964b71c7f120503ef0c5b84ae476a6e15112e6c50a0b876a9a03e61265",
     ".secure-check/lib/secure_check/hook.py": "908ab45ff57145336a0213ed2f74f7d9f25deb4ce5180158cda611215da9c6c4",
-    ".secure-check/lib/secure_check/installer.py": "fffdd5f4ef06db2797dd1d1d526d9d6767e5504d4a074f87c0ce65cb3f0398b8",
+    ".secure-check/lib/secure_check/installer.py": "2c464b0fbc89a8325c50eff062c20e3a2d6d1df9101f9e4df1988bac77bbb9d7",
     ".secure-check/lib/secure_check/integrity.py": "4349cd4485bb8e42c279fe598603effaf6933c6f5f4716dd2d681b79a9e54966",
     ".secure-check/lib/secure_check/patterns.py": "4809fdd9baccd52f4d2dbe17943ada32ef04792524c2ab3b1a41a9ecba1694d0",
     ".secure-check/lib/secure_check/policy.py": "171e1f0b1d90d13270c8405da62e3603a6d9748e46306be682745edd1429c74c",
